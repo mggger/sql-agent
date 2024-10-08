@@ -1,3 +1,4 @@
 langchain-community
 openai
 mysql-connector-python==8.4.0
+openpyxl
