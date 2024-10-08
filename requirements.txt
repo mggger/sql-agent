@@ -1,5 +1,3 @@
 langchain-community
 openai
 mysql==0.0.3
-mysql-connector-python==8.4.0
-mysqlclient==2.2.4
