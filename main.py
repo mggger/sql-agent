@@ -29,7 +29,7 @@ def setup_database(connection_type, file=None, host=None, port=None, user=None, 
         db_uri = f"sqlite:///{db_path}"
         engine = create_engine(db_uri)
         if file is not None:
-            table_name = Path(file.name).stem.lower()  # Get filename without extension
+            table_name = Path(file.name).stem.lower().replace(" ", "_")  # Get filename without extension
             file_extension = file.name.split(".")[-1].lower()
             if file_extension == "csv":
                 df = pd.read_csv(file)
