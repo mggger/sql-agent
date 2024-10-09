@@ -2,10 +2,5 @@ langchain-community
 openai
 mysql-connector-python==8.4.0
 openpyxl
-pandasai~=2.2.15
-streamlit~=1.37.0
-pandas~=1.5.3
-langchain~=0.3.2
-SQLAlchemy~=2.0.0
-python-dotenv~=1.0.0
-pillow~=10.4.0
+pandasai
+pillow
