@@ -2,4 +2,4 @@ langchain-community
 openai
 mysql-connector-python==8.4.0
 openpyxl
-pandasai
+pandasai==2.2.15
