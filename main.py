@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from dotenv import load_dotenv
 from pandasai.llm import OpenAI
 from pandasai import Agent
 from pandasai.responses.streamlit_response import StreamlitResponse
@@ -8,8 +7,6 @@ import os
 from PIL import Image
 
 
-# Load environment variables
-load_dotenv()
 
 # Dictionary to store the extracted dataframes
 data = {}
