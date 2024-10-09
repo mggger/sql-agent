@@ -1,103 +1,161 @@
-import os
 import streamlit as st
-from pathlib import Path
-from langchain_community.chat_models import ChatOpenAI
-from langchain_community.agent_toolkits import create_sql_agent
-from langchain_community.tools.sql_database.tool import SQLDatabase
-from langchain.agents import AgentType
-from langchain_community.callbacks import StreamlitCallbackHandler
-from langchain_community.agent_toolkits import SQLDatabaseToolkit
-from sqlalchemy import create_engine
 import pandas as pd
+from dotenv import load_dotenv
+from pandasai.llm import OpenAI
+from pandasai import Agent
+from pandasai.responses.streamlit_response import StreamlitResponse
+import os
+from PIL import Image
 
-st.set_page_config(page_title="SQL Agent", page_icon="🦜")
-st.title("🦜 SQL Agent")
 
-# Sidebar for input settings
-st.sidebar.header("Input Settings")
-connection_type = st.sidebar.radio("Select input type:", ("MySQL", "Excel / CSV"))
+# Load environment variables
+load_dotenv()
+
+# Dictionary to store the extracted dataframes
+data = {}
 
 
-# Function to handle database connection and table creation
-@st.cache_resource(ttl="2h")
-def setup_database(connection_type, file=None, host=None, port=None, user=None, password=None, database=None):
-    if connection_type == "MySQL":
-        db_uri = f"mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}"
-        table_name = None
-    else:  # Excel / CSV
-        db_path = "local_sqlite.db"
-        db_uri = f"sqlite:///{db_path}"
-        engine = create_engine(db_uri)
-        if file is not None:
-            table_name = Path(file.name).stem.lower().replace(" ", "_")  # Get filename without extension
-            file_extension = file.name.split(".")[-1].lower()
-            if file_extension == "csv":
-                df = pd.read_csv(file)
-            else:  # xlsx or xls
-                df = pd.read_excel(file)
-            df.to_sql(table_name, engine, index=False, if_exists='replace')
+def main():
+    st.set_page_config(page_title="SQL Agent", page_icon="🐼")
+    st.title("Chat with Your Data")
+    # reading the csv file
 
-    return SQLDatabase.from_uri(database_uri=db_uri), table_name
+    # Side Menu Bar
+    with st.sidebar:
+        st.title("Configuration:⚙️")
+        # Activating Demo Data
+        file_upload = st.sidebar.file_uploader("Upload your Data", accept_multiple_files=False, type=['csv', 'xls', 'xlsx'])
 
-# Handle input based on connection type
-if connection_type == "MySQL":
-    st.sidebar.subheader("MySQL Connection Settings")
-    host = st.sidebar.text_input("Host:")
-    port = st.sidebar.text_input("Port:", "3306")
-    user = st.sidebar.text_input("User:")
-    password = st.sidebar.text_input("Password:", type="password")
-    database = st.sidebar.text_input("Database:")
+        st.markdown(":green[*Please ensure the first row has the column names.*]")
 
-    if not host or not user or not password or not database:
-        st.info("Please provide database connection information.")
-        st.stop()
+    if file_upload is not None:
+        data = extract_dataframes(file_upload)
+        df = st.selectbox("Here's your uploaded data!",
+                          tuple(data.keys()), index=0
+                          )
+        st.dataframe(data[df])
 
-    db, _ = setup_database(connection_type, host=host, port=port, user=user, password=password, database=database)
-else:  # Excel / CSV
-    uploaded_file = st.sidebar.file_uploader("Upload Excel/CSV file", type=["xlsx", "xls", "csv"])
+        openai_api_key = os.environ.get("OPENAI_API_KEY")
 
-    if not uploaded_file:
-        st.info("Please upload a file.")
-        st.stop()
+        llm = get_LLM(openai_api_key)
 
-    db, table_name = setup_database(connection_type, file=uploaded_file)
-    if table_name:
-        st.sidebar.success(f"Table '{table_name}' created successfully!")
+        if llm:
+            # Instattiating PandasAI agent
+            analyst = get_agent(data, llm)
 
-openai_api_key = os.environ.get("OPENAI_API_KEY")
-if not openai_api_key:
-    st.error("OPENAI_API_KEY is not set in the environment variables.")
-    st.stop()
+            # starting the chat with the PandasAI agent
+            chat_window(analyst)
 
-# Setup agent
-llm = ChatOpenAI(openai_api_key=openai_api_key, model="gpt-4o-mini", temperature=0, streaming=True)
-toolkit = SQLDatabaseToolkit(db=db, llm=llm)
-agent = create_sql_agent(
-    llm=llm,
-    toolkit=toolkit,
-    verbose=True,
-    agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-)
+    else:
+        st.warning("Please upload your data first! You can upload a CSV or an Excel file.")
 
-# Chat interface
-if "messages" not in st.session_state or st.sidebar.button("Clear message history"):
-    st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you with your database?"}]
 
-for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
+# Function to get LLM
+def get_LLM(user_api_key):
+    llm = OpenAI(api_token=user_api_key)
+    return llm
 
-user_query = st.chat_input(placeholder="Ask me anything about your database!")
 
-if user_query:
-    st.session_state.messages.append({"role": "user", "content": user_query})
-    st.chat_message("user").write(user_query)
-
+# Functuion for chat window
+def chat_window(analyst):
     with st.chat_message("assistant"):
-        st_cb = StreamlitCallbackHandler(st.container())
+        st.text("How can I help you with your data?🧐")
+
+    # Initilizing message history
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # Displaying the message history on re-reun
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            # priting the questions
+            if 'question' in message:
+                st.markdown(message["question"])
+            # printing the code generated and the evaluated code
+            elif 'response' in message:
+                # getting the response
+                display_response(message['response'])
+
+            # retrieving error messages
+            elif 'error' in message:
+                st.text(message['error'])
+    # Getting the questions from the users
+    user_question = st.chat_input("What are you curious about? ")
+
+    if user_question:
+        # Displaying the user question in the chat message
+        with st.chat_message("user"):
+            st.markdown(user_question)
+        # Adding user question to chat history
+        st.session_state.messages.append({"role": "user", "question": user_question})
+
         try:
-            response = agent.run(user_query, callbacks=[st_cb])
+            with st.spinner("Analyzing..."):
+                response = analyst.chat(user_question)
+                display_response(response)
+                st.session_state.messages.append({"role": "assistant", "response": response})
+
         except Exception as e:
-            print(e)
-            response = "I Don't know."
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            st.write(e)
+            error_message = "⚠️Sorry, Couldn't generate the answer! Please try rephrasing your question!"
+
+    # Function to clear history
+    def clear_chat_history():
+        st.session_state.messages = []
+
+    st.sidebar.button("CLEAR Chat history🗑️", on_click=clear_chat_history)
+
+
+
+def display_response(response):
+    if isinstance(response, str) and os.path.isfile(response) and response.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+        image = Image.open(response)
+        st.image(image, caption="Generated Image")
+    else:
         st.write(response)
+
+def get_agent(data, llm):
+    """
+    The function creates an agent on the dataframes exctracted from the uploaded files
+    Args:
+        data: A Dictionary with the dataframes extracted from the uploaded data
+        llm:  llm object based on the ll type selected
+    Output: PandasAI Agent
+    """
+    agent = Agent(list(data.values()), config={"llm": llm, "verbose": True, "response_parser": StreamlitResponse})
+
+    return agent
+
+
+def extract_dataframes(raw_file):
+    """
+    This function extracts dataframes from the uploaded file/files
+    Args:
+        raw_file: Upload_File object
+    Processing: Based on the type of file read_csv or read_excel to extract the dataframes
+    Output:
+        dfs:  a dictionary with the dataframes
+
+    """
+    dfs = {}
+    if raw_file.name.split('.')[1] == 'csv':
+        csv_name = raw_file.name.split('.')[0]
+        df = pd.read_csv(raw_file)
+        dfs[csv_name] = df
+
+    elif (raw_file.name.split('.')[1] == 'xlsx') or (raw_file.name.split('.')[1] == 'xls'):
+        # Read the Excel file
+        xls = pd.ExcelFile(raw_file)
+
+        # Iterate through each sheet in the Excel file and store them into dataframes
+        dfs = {}
+        for sheet_name in xls.sheet_names:
+            dfs[sheet_name] = pd.read_excel(raw_file, sheet_name=sheet_name)
+
+    # return the dataframes
+    return dfs
+
+
+if __name__ == "__main__":
+    main()
+
