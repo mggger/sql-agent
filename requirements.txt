@@ -4,5 +4,3 @@ mysql-connector-python==8.4.0
 openpyxl
 pandasai
 pillow
-streamlit
-pandas
