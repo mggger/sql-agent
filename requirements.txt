@@ -3,3 +3,4 @@ openai
 mysql-connector-python==8.4.0
 openpyxl
 pandasai==2.2.15
+PyMySQL
