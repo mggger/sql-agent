@@ -17,6 +17,124 @@ image_dict = {}
 def main():
     st.set_page_config(page_title="Data Chat Agent", page_icon="🐼", layout="wide")
 
+    st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+        html, body, [class*="css"] {
+            font-family: 'Roboto', sans-serif;
+            color: #17213D;
+        }
+
+        .main {
+            background-color: #f8f9fa;
+        }
+
+        .stApp {
+            background-color: #f8f9fa;
+        }
+
+        .css-1d391kg {
+            background-color: #ffffff;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(23, 33, 61, 0.1);
+        }
+
+        .stButton>button {
+            background-color: #FCA311;
+            color: #17213D;
+            border-radius: 5px;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .stButton>button:hover {
+            background-color: #e39310;
+            color: #ffffff;
+        }
+
+        .stTextInput>div>div>input {
+            border-radius: 5px;
+            border: 1px solid #17213D;
+        }
+
+        .stSelectbox>div>div>select {
+            border-radius: 5px;
+            border: 1px solid #17213D;
+        }
+
+        .stFileUploader>div>div>button {
+            background-color: #FCA311;
+            color: #17213D;
+        }
+
+        .stRadio>div {
+            background-color: white;
+            border-radius: 5px;
+            padding: 0.5rem;
+        }
+
+        .stChat {
+            border-radius: 15px;
+            border: 1px solid #17213D;
+            padding: 1rem;
+        }
+
+        h1, h2, h3 {
+            color: #17213D;
+        }
+
+        .sidebar .sidebar-content {
+            background-color: #17213D;
+            color: #ffffff;
+        }
+
+        .sidebar .sidebar-content .stRadio label {
+            color: #ffffff;
+        }
+
+        .sidebar .sidebar-content .stButton>button {
+            background-color: #FCA311;
+            color: #17213D;
+        }
+
+        .sidebar .sidebar-content .stButton>button:hover {
+            background-color: #ffffff;
+            color: #17213D;
+        }
+
+        .stSpinner>div>div {
+            border-top-color: #FCA311 !important;
+        }
+
+        .stAlert {
+            background-color: #FCA311;
+            color: #17213D;
+        }
+
+        .stDataFrame {
+            border: 1px solid #17213D;
+        }
+
+        .stDataFrame th {
+            background-color: #17213D;
+            color: #ffffff;
+        }
+
+        .stDataFrame td {
+            background-color: #ffffff;
+            color: #17213D;
+        }
+
+        .stDataFrame tr:nth-of-type(even) {
+            background-color: #f8f9fa;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
     # Create two columns: one for chat, one for image display
     chat_col, image_col = st.columns(2)
 
